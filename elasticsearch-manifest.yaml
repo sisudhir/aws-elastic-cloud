@@ -1,0 +1,289 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elastic
+  namespace: elastic
+spec:
+  version: 7.12.1
+  http:
+    service:
+      spec:
+        type: LoadBalancer
+    tls:
+      selfSignedCertificate:
+        disabled: true
+  nodeSets:
+  - name: eck-master
+    count: 1
+    podTemplate:
+      spec:
+       containers:
+        - name: elasticsearch
+          env:
+           - name: ES_JAVA_OPTS
+             value: "-Xms256m -Xmx256m"
+          resources:
+            requests:
+              cpu: 0.5
+              memory: 1Gi
+            limits:
+              memory: 1Gi
+              cpu: 0.5
+       initContainers:              
+        - name: increase-vm-max-map
+          image: busybox
+          command: ["sysctl", "-w", "vm.max_map_count=262144"]
+          securityContext:
+            privileged: true
+        - name: increase-fd-ulimit
+          image: busybox
+          command: ["sh", "-c", "ulimit -n 65536"]
+          securityContext:
+            privileged: true
+        - command:
+          - sh
+          - -c
+          - |
+            bin/elasticsearch-plugin remove repository-s3
+            bin/elasticsearch-plugin install --batch repository-s3
+          name: install-plugins
+        - name: add-access-keys
+          env:
+          - name: AWS_ACCESS_KEY_ID
+            value: "${s3_key}"
+          - name: AWS_SECRET_ACCESS_KEY
+            value: "${s3_key_id}" 
+          command:
+          - sh
+          - -c
+          - |
+            echo $AWS_ACCESS_KEY_ID | bin/elasticsearch-keystore add --stdin --force s3.client.default.access_key
+            echo $AWS_SECRET_ACCESS_KEY | bin/elasticsearch-keystore add --stdin --force s3.client.default.secret_key  
+    config:  
+      xpack.security.authc:
+          anonymous:
+            username: anonymous
+            roles: superuser
+            authz_exception: false
+      xpack.security.authc.realms:
+        native:
+          native1:
+            order: 1     
+      node.master: true
+      node.data: false
+      node.ingest: false
+    volumeClaimTemplates:
+      - metadata:
+          name: elasticsearch-data
+        spec:
+          accessModes: [ "ReadWriteOnce" ]
+          storageClassName: gp2 
+          resources:
+            requests:
+              storage: 10Gi
+  - name: eck-worker1 
+    count: 1    
+    config:   
+      xpack.security.authc:
+          anonymous:
+            username: anonymous
+            roles: superuser
+            authz_exception: false
+      xpack.security.authc.realms:
+        native:
+          native1:
+            order: 1
+      node.master: false
+      node.data: true
+      node.ingest: true
+    podTemplate:
+       spec:
+        containers:
+        - name: elasticsearch
+          env:
+           - name: ES_JAVA_OPTS
+             value: "-Xms256m -Xmx256m"
+          resources:
+            requests:
+              cpu: 1
+              memory: 2Gi
+            limits:
+              memory: 2Gi
+              cpu: 1
+        initContainers:              
+        - name: increase-vm-max-map
+          image: busybox
+          command: ["sysctl", "-w", "vm.max_map_count=262144"]
+          securityContext:
+            privileged: true
+        - name: increase-fd-ulimit
+          image: busybox
+          command: ["sh", "-c", "ulimit -n 65536"]
+          securityContext:
+            privileged: true
+        - command:
+          - sh
+          - -c
+          - |
+            bin/elasticsearch-plugin remove repository-s3
+            bin/elasticsearch-plugin install --batch repository-s3
+          name: install-plugins
+        - name: add-access-keys
+          env:
+          - name: AWS_ACCESS_KEY_ID
+            value: "${s3_key}"
+          - name: AWS_SECRET_ACCESS_KEY
+            value: "${s3_key_id}" 
+          command:
+          - sh
+          - -c
+          - |
+            echo $AWS_ACCESS_KEY_ID | bin/elasticsearch-keystore add --stdin --force s3.client.default.access_key
+            echo $AWS_SECRET_ACCESS_KEY | bin/elasticsearch-keystore add --stdin --force s3.client.default.secret_key  
+    volumeClaimTemplates:
+      - metadata:
+          name: elasticsearch-data
+        spec:
+          accessModes: [ "ReadWriteOnce" ]
+          storageClassName: gp2 
+          resources:
+            requests:
+              storage: 10Gi
+             
+  - name: eck-worker2 
+    count: 1    
+    config:   
+      xpack.security.authc:
+          anonymous:
+            username: anonymous
+            roles: superuser
+            authz_exception: false
+      xpack.security.authc.realms:
+        native:
+          native1:
+            order: 1
+      node.master: false
+      node.data: true
+      node.ingest: true
+    podTemplate:
+       spec:
+        containers:
+        - name: elasticsearch
+          env:
+           - name: ES_JAVA_OPTS
+             value: "-Xms256m -Xmx256m"
+          resources:
+            requests:
+              cpu: 1
+              memory: 2Gi
+            limits:
+              memory: 2Gi
+              cpu: 1
+        initContainers:              
+        - name: increase-vm-max-map
+          image: busybox
+          command: ["sysctl", "-w", "vm.max_map_count=262144"]
+          securityContext:
+            privileged: true
+        - name: increase-fd-ulimit
+          image: busybox
+          command: ["sh", "-c", "ulimit -n 65536"]
+          securityContext:
+            privileged: true
+        - command:
+          - sh
+          - -c
+          - |
+            bin/elasticsearch-plugin remove repository-s3
+            bin/elasticsearch-plugin install --batch repository-s3
+          name: install-plugins
+        - name: add-access-keys
+          env:
+          - name: AWS_ACCESS_KEY_ID
+            value: "${s3_key}"
+          - name: AWS_SECRET_ACCESS_KEY
+            value: "${s3_key_id}" 
+          command:
+          - sh
+          - -c
+          - |
+            echo $AWS_ACCESS_KEY_ID | bin/elasticsearch-keystore add --stdin --force s3.client.default.access_key
+            echo $AWS_SECRET_ACCESS_KEY | bin/elasticsearch-keystore add --stdin --force s3.client.default.secret_key  
+    volumeClaimTemplates:
+      - metadata:
+          name: elasticsearch-data
+        spec:
+          accessModes: [ "ReadWriteOnce" ]
+          storageClassName: gp2 
+          resources:
+            requests:
+              storage: 10Gi           
+
+  - name: eck-worker3
+    count: 1    
+    config:   
+      xpack.security.authc:
+          anonymous:
+            username: anonymous
+            roles: superuser
+            authz_exception: false
+      xpack.security.authc.realms:
+        native:
+          native1:
+            order: 1
+      node.master: false
+      node.data: true
+      node.ingest: true
+    podTemplate:
+       spec:
+        containers:
+        - name: elasticsearch
+          env:
+           - name: ES_JAVA_OPTS
+             value: "-Xms256m -Xmx256m"
+          resources:
+            requests:
+              cpu: 1
+              memory: 2Gi
+            limits:
+              memory: 2Gi
+              cpu: 1
+        initContainers:              
+        - name: increase-vm-max-map
+          image: busybox
+          command: ["sysctl", "-w", "vm.max_map_count=262144"]
+          securityContext:
+            privileged: true
+        - name: increase-fd-ulimit
+          image: busybox
+          command: ["sh", "-c", "ulimit -n 65536"]
+          securityContext:
+            privileged: true
+        - command:
+          - sh
+          - -c
+          - |
+            bin/elasticsearch-plugin remove repository-s3
+            bin/elasticsearch-plugin install --batch repository-s3
+          name: install-plugins
+        - name: add-access-keys
+          env:
+          - name: AWS_ACCESS_KEY_ID
+            value: "${s3_key}"
+          - name: AWS_SECRET_ACCESS_KEY
+            value: "${s3_key_id}" 
+          command:
+          - sh
+          - -c
+          - |
+            echo $AWS_ACCESS_KEY_ID | bin/elasticsearch-keystore add --stdin --force s3.client.default.access_key
+            echo $AWS_SECRET_ACCESS_KEY | bin/elasticsearch-keystore add --stdin --force s3.client.default.secret_key  
+    volumeClaimTemplates:
+      - metadata:
+          name: elasticsearch-data
+        spec:
+          accessModes: [ "ReadWriteOnce" ]
+          storageClassName: gp2 
+          resources:
+            requests:
+              storage: 10Gi               
