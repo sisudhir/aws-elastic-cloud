@@ -69,7 +69,6 @@ provider "kubectl" {
   cluster_ca_certificate = base64decode(data.aws_eks_cluster.default.certificate_authority[0].data)
   token                  = data.aws_eks_cluster_auth.default.token
   load_config_file       = false
-  #config_path            = "${path.module}/kubeconfig-${var.cluster_name}"
 }
 
 data "kubectl_file_documents" "eck_operator_manifests" {
@@ -89,8 +88,7 @@ resource "kubernetes_namespace" "elastic_ns" {
 
 data "kubectl_file_documents" "elasticsearch_manifests" {
     content = templatefile("./elasticsearch-manifest.yaml", { s3_key = "${var.s3_key}", s3_key_id = "${var.s3_key_id}" })
-    # content = file("./elasticsearch-manifest.yaml")
-    }
+}
 
 resource "kubectl_manifest" "elasticsearch" {
     count     = length(data.kubectl_file_documents.elasticsearch_manifests.documents)
